@@ -1,0 +1,44 @@
+# Секреты и локальная конфигурация (никогда не коммитить)
+.env
+.env.*
+!.env.example
+
+# Виртуальное окружение
+.venv/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Тесты / покрытие
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE и редакторы
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ОС
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Логи
+*.log
+
+# Кэш
+.cache/

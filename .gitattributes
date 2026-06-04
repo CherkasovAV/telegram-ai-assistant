@@ -1,0 +1,16 @@
+# Текстовые файлы
+*.py text
+*.md text
+*.txt text
+*.json text
+*.env.example text
+
+# Скрипты
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Python
+*.pyc binary
+*.pyo binary
+__pycache__/ binary
+*.py[cod] binary
