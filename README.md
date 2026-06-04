@@ -1,10 +1,10 @@
-**[Русская версия](README.ru.md)**
+**[English version](README.en.md)**
 
-# Telegram AI Assistant with Long-Term Memory
+# Telegram AI Assistant с долговременной памятью
 
-**A personal Telegram bot with vector memory powered by Pinecone and OpenAI**
+**Персональный Telegram-бот с векторной памятью на базе Pinecone и OpenAI**
 
-The bot carries meaningful conversations, remembering context from previous chats thanks to a **Pinecone** vector database. Each message is analyzed for similarity against stored memories — new information is added, similar entries are updated.
+Бот ведёт осмысленные диалоги, помня контекст общения благодаря векторной базе данных **Pinecone**. Каждое сообщение анализируется на сходство с уже сохранёнными — новая информация добавляется, похожая обновляется.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
@@ -12,22 +12,22 @@ The bot carries meaningful conversations, remembering context from previous chat
 
 ---
 
-## 🚀 Features
+## 🚀 Возможности
 
-- **Long-term memory** — vector search for relevant context on every query
-- **Per-user isolation** — memory is partitioned by Telegram `user_id`
-- **Smart storage** — new facts are added, similar ones are updated
-- **Configurable threshold** — control similarity via `MEMORY_COSINE_SIMILARITY_HIGH_THRESHOLD`
-- **Transparency** — logging: stored / updated / skipped entries
+- **Долговременная память** — векторный поиск релевантных фрагментов по запросу
+- **Изоляция по пользователям** — память разделена по `user_id` Telegram
+- **Умное сохранение** — новые сведения добавляются, похожие обновляются
+- **Настраиваемый порог** — контроль сходства через `MEMORY_COSINE_SIMILARITY_HIGH_THRESHOLD`
+- **Прозрачность** — логирование: сохранён / обновлён / пропущен фрагмент
 
 ---
 
-## 📦 Project Structure
+## 📦 Структура проекта
 
 ```
 telegram-ai-assistant/
-├── telegram_bot.py       # Entry point, long polling, memory integration
-├── pinecone_manager.py   # PineconeManager: embeddings, upsert/query, memory logic
+├── telegram_bot.py       # Точка входа, long polling, интеграция с памятью
+├── pinecone_manager.py   # PineconeManager: эмбеддинги, upsert/query, логика памяти
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -35,46 +35,46 @@ telegram-ai-assistant/
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Установка
 
-### Requirements
+### Требования
 
 - Python 3.10+
-- Accounts: **OpenAI**, **Pinecone**, and a bot token from [@BotFather](https://t.me/BotFather)
+- Аккаунты: **OpenAI**, **Pinecone**, токен бота от [@BotFather](https://t.me/BotFather)
 
-### Pinecone Setup
+### Требования к Pinecone
 
-- **Metric**: `cosine` (otherwise score interpretation will be incorrect)
-- **Dimension**: must match your embedding model (`text-embedding-3-small` → **1536**)
+- **Метрика**: `cosine` (иначе интерпретация score будет некорректной)
+- **Размерность**: должна совпадать с моделью эмбеддингов (`text-embedding-3-small` → **1536**)
 
-### Steps
+### Шаги
 
 ```bash
-# 1. Clone the repository
+# 1. Клонировать репозиторий
 git clone https://github.com/CherkasovAV/telegram-ai-assistant.git
 cd telegram-ai-assistant
 
-# 2. Create a virtual environment
+# 2. Создать виртуальное окружение
 python -m venv venv
 
-# 3. Activate it
+# 3. Активировать
 # Windows:
 venv\Scripts\activate
 # Linux/macOS:
 source venv/bin/activate
 
-# 4. Install dependencies
+# 4. Установить зависимости
 pip install -r requirements.txt
 
-# 5. Set up environment variables
+# 5. Настроить переменные окружения
 cp .env.example .env
 ```
 
 ---
 
-## 🔐 Environment Configuration
+## 🔐 Настройка окружения
 
-Edit `.env`:
+Отредактируйте `.env`:
 
 ```env
 # Telegram Bot Token
@@ -88,124 +88,124 @@ OPENAI_API_KEY=sk-your-api-key-here
 PINECONE_API_KEY=pcsk_your-api-key-here
 PINECONE_INDEX_NAME=your-index-name
 
-# Optional
+# Опционально
 OPENAI_CHAT_MODEL=gpt-4o-mini
 PINECONE_ENVIRONMENT=us-east-1
 ```
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
-| `OPENAI_API_KEY` | Yes | OpenAI key (chat + embeddings) |
-| `PINECONE_API_KEY` | Yes | Pinecone API key |
-| `PINECONE_INDEX_NAME` | Yes | Index name |
-| `OPENAI_BASE_URL` | No | Custom endpoint (proxy, compatible API) |
-| `OPENAI_CHAT_MODEL` | No | Chat model (default: `gpt-4o-mini`) |
-| `PINECONE_ENVIRONMENT` | No | Region (default: `us-east-1`) |
+| Переменная | Обязательна | Описание |
+|------------|-------------|----------|
+| `TELEGRAM_BOT_TOKEN` | Да | Токен бота от @BotFather |
+| `OPENAI_API_KEY` | Да | Ключ OpenAI (чат + эмбеддинги) |
+| `PINECONE_API_KEY` | Да | Ключ Pinecone |
+| `PINECONE_INDEX_NAME` | Да | Имя индекса |
+| `OPENAI_BASE_URL` | Нет | Свой endpoint (прокси, совместимый API) |
+| `OPENAI_CHAT_MODEL` | Нет | Модель чата (по умолчанию `gpt-4o-mini`) |
+| `PINECONE_ENVIRONMENT` | Нет | Регион (по умолчанию `us-east-1`) |
 
 ---
 
-## 🎯 Usage
+## 🎯 Использование
 
-### Running the bot
+### Запуск
 
 ```bash
 python telegram_bot.py
 ```
 
-At INFO log level you can see when a memory entry is:
-- **Stored** — new information
-- **Updated** — high similarity with an existing entry
-- **Skipped** — when mode is set to `skip`
+В логах (уровень INFO) видно, когда фрагмент:
+- **Сохранён** — новая информация
+- **Обновлён** — найдено высокое сходство с существующим
+- **Пропущен** — если изменён режим на `skip`
 
 ---
 
-## 🧠 How Memory Works
+## 🧠 Как работает память
 
-### `PineconeManager` Architecture
+### Архитектура `PineconeManager`
 
 ```python
 class PineconeManager:
-    - create_embedding()        # Create text embedding
-    - query_by_text()           # Search by text query
-    - query_by_vector()         # Search by vector
-    - upsert_documents()        # Batch write
-    - remember_document()       # Smart storage with similarity check
-    - assess_memory_similarity() # Assess similarity without writing
-    - delete() / delete_all()   # Deletion
-    - update_metadata()         # Update metadata
+    - create_embedding()        # Создание эмбеддинга текста
+    - query_by_text()           # Поиск по текстовому запросу
+    - query_by_vector()         # Поиск по вектору
+    - upsert_documents()        # Пакетная запись
+    - remember_document()       # Умное сохранение с проверкой сходства
+    - assess_memory_similarity() # Оценка сходства без записи
+    - delete() / delete_all()   # Удаление
+    - update_metadata()         # Обновление метаданных
 ```
 
-### Storage Logic
+### Логика сохранения
 
-1. User sends a message
-2. Bot creates an embedding and searches Pinecone for similar vectors
-3. If similarity > threshold → updates the existing entry
-4. If similarity < threshold → stores as a new document
+1. Пользователь отправляет сообщение
+2. Бот создаёт эмбеддинг и ищет похожие в Pinecone
+3. Если сходство > порога → обновляет существующий слот
+4. Если сходство < порога → добавляет как новый документ
 
 ---
 
-## 📊 Architecture
+## 📊 Архитектура
 
 ```
 ┌──────────────┐     ┌───────────────────┐     ┌─────────────┐
 │   Telegram   │────▶│ telegram_bot.py   │────▶│  Pinecone   │
-│   Message    │     │ (long polling)    │     │  (vectors)  │
+│   Message    │     │ (long polling)    │     │  (векторы)  │
 └──────────────┘     └───────────────────┘     └─────────────┘
                             │
                             ▼
                     ┌───────────────────┐
                     │ pinecone_manager  │
-                    │ (embeddings,      │
+                    │ (эмбеддинги,      │
                     │  upsert/query)    │
                     └───────────────────┘
                             │
                             ▼
                     ┌───────────────────┐
                     │   OpenAI API      │
-                    │ (chat, embeddings)│
+                    │ (чат, эмбеддинги) │
                     └───────────────────┘
 ```
 
 ---
 
-## 🔍 Troubleshooting
+## 🔍 Устранение неполадок
 
-### Pinecone Connection Errors
+### Ошибки подключения к Pinecone
 
-- Verify `PINECONE_API_KEY` and `PINECONE_INDEX_NAME`
-- Make sure the index exists and is accessible
-- Check that the index metric is `cosine`
+- Проверьте `PINECONE_API_KEY` и `PINECONE_INDEX_NAME`
+- Убедитесь, что индекс существует и доступен
+- Проверьте метрику индекса (`cosine`)
 
-### Telegram Connection Errors
+### Ошибки подключения к Telegram
 
-- Verify `TELEGRAM_BOT_TOKEN`
-- If you have network issues, set `TG_PROXY_URL`
-- Make sure only one bot instance is running
+- Проверьте `TELEGRAM_BOT_TOKEN`
+- При проблемах с сетью задайте `TG_PROXY_URL`
+- Убедитесь, что запущен только один экземпляр бота
 
-### Bot Not Responding
+### Бот не отвечает
 
-- Check logs for timeouts
-- Verify that `getMe` succeeds
-- Make sure the Pinecone index is not empty
-
----
-
-## 🔒 Security
-
-- **Never commit `.env`** — only `.env.example` goes in the repository
-- **Rotate keys** if you suspect a leak
-- **Restrict access** to the bot via privacy settings
+- Проверьте логи на наличие таймаутов
+- Убедитесь, что `getMe` проходит успешно
+- Проверьте, что индекс Pinecone не пуст
 
 ---
 
-## 📄 License
+## 🔒 Безопасность
 
-MIT License — see [LICENSE](LICENSE)
+- **Никогда не коммитьте `.env`** — в репозитории только `.env.example`
+- **Ротируйте ключи** при подозрении на утечку
+- **Ограничьте доступ** к боту через настройки приватности
 
 ---
 
-## 👤 Author
+## 📄 Лицензия
+
+MIT License — см. [LICENSE](LICENSE)
+
+---
+
+## 👤 Автор
 
 **CherkasovAV**
 
@@ -213,8 +213,8 @@ GitHub: [@CherkasovAV](https://github.com/CherkasovAV)
 
 ---
 
-## 🙋 Support
+## 🙋 Поддержка
 
-- Questions and suggestions: open an Issue in the repository
+- Вопросы и предложения: создайте Issue в репозитории
 - Telegram: [@CherkasovAV](https://t.me/CherkasovAV)
 - Email: [cherkasov83@yandex.ru](mailto:cherkasov83@yandex.ru)
