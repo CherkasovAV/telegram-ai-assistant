@@ -2,3 +2,5 @@ openai
 python-dotenv
 pinecone
 pyTelegramBotAPI
+pypdf
+python-docx

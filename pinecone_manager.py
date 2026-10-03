@@ -3,7 +3,8 @@
 
 Методы: create_embedding, upsert_vector(s), upsert_document(s), query_by_vector/text,
 fetch_vectors, delete / delete_by_filter / delete_all, describe_index_stats, update_metadata,
-assess_memory_similarity, remember_document (запись в память с проверкой сходства).
+assess_memory_similarity, remember_document (запись в память с проверкой сходства,
+в серой зоне — с опциональным LLM-арбитражем противоречий).
 """
 
 from __future__ import annotations
@@ -17,11 +18,16 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pinecone import Pinecone
 
-# --- Долговременная память чат-бота: порог косинусного сходства ---
+# --- Долговременная память чат-бота: пороги косинусного сходства ---
 # Score из ответа Pinecone query (индекс с metric="cosine"): чем выше, тем ближе векторы.
-# Значения >= порога — «высокое» сходство (дубликат / вариация той же мысли).
-# Значения < порога — «низкое» сходство (новая информация → обычно записываем).
+# >= HIGH_THRESHOLD — «высокое» сходство (дубликат / вариация той же мысли).
+# [GRAY_LOW, HIGH_THRESHOLD) — «серая зона»: похоже, но не точно то же; похожесть может
+#   скрывать и противоречие («хочу в Новгород» vs «не хочу в Новгород, хочу в Тагил» = 0.76).
+#   В этой зоне текст можно отправить LLM-арбитру (колбэк arbitrator), который решит:
+#   same / contradiction / unrelated. Без арбитра — запись проходит как новая.
+# < GRAY_LOW — «низкое» сходство (новая информация → записываем).
 MEMORY_COSINE_SIMILARITY_HIGH_THRESHOLD: float = 0.85
+MEMORY_COSINE_SIMILARITY_GRAY_LOW: float = 0.65
 
 Vector = Sequence[float]
 Metadata = Mapping[str, Any]
@@ -50,6 +56,9 @@ class MemoryWriteResult:
     max_similarity: float | None
     similar_to_id: str | None
     threshold_used: float
+    # Справочно: вердикт LLM-арбитра в серой зоне и текст ближайшей записи
+    verdict: str | None = None
+    best_match_text: str | None = None
 
 
 class PineconeManager:
@@ -103,7 +112,12 @@ class PineconeManager:
         self.openai_base_url = (openai_base_url or os.getenv("OPENAI_BASE_URL") or "").strip() or None
         self.openai_client: OpenAI | None = None
         if self.openai_api_key:
-            client_kwargs: dict[str, Any] = {"api_key": self.openai_api_key}
+            client_kwargs: dict[str, Any] = {
+                "api_key": self.openai_api_key,
+                # Ретраи и таймауты на уровне SDK — запас при нестабильной сети.
+                "max_retries": int(os.getenv("OPENAI_MAX_RETRIES", "5")),
+                "timeout": float(os.getenv("OPENAI_TIMEOUT", "90")),
+            }
             if self.openai_base_url:
                 client_kwargs["base_url"] = self.openai_base_url
             self.openai_client = OpenAI(**client_kwargs)
@@ -342,14 +356,22 @@ class PineconeManager:
         similarity_threshold: float | None = None,
         top_k: int = 5,
         filter: Mapping[str, Any] | None = None,
+        arbitrator: Optional[Callable[[str, str], str]] = None,
     ) -> MemoryWriteResult:
         """
         Запись фрагмента в долговременную память с проверкой сходства.
 
-        При низком сходстве с ближайшими соседями (< порога) — upsert новой записи.
-        При высоком (>= порога): при on_high_similarity=\"skip\" ничего не пишем;
-        при \"update\" — обновляем тот же id (новый эмбеддинг и merge метаданных).
-        Порог по умолчанию — MEMORY_COSINE_SIMILARITY_HIGH_THRESHOLD.
+        Логика:
+        - сходство >= HIGH_THRESHOLD — дубль/вариация: при on_high_similarity=\"skip\"
+          ничего не пишем; при \"update\" — обновляем тот же id.
+        - сходство в серой зоне [GRAY_LOW, HIGH_THRESHOLD) и задан arbitrator:
+          арбитр сравнивает новый и старый текст и возвращает
+          \"same\" | \"contradiction\" | \"unrelated\". same/contradiction обрабатываются
+          как дубль (update/skip по режиму), unrelated — пишется новая запись.
+        - иначе — upsert новой записи.
+
+        Args:
+            arbitrator: колбэк (new_text, old_text) -> вердикт (LLM-арбитр в серой зоне).
         """
         threshold = self._effective_memory_threshold(similarity_threshold)
         fn = self._resolve_embed_fn(embed_fn)
@@ -365,13 +387,29 @@ class PineconeManager:
             include_metadata=True,
         )
         max_score, best_id, best_meta = self._best_match_from_query(response)
+        best_text = str(best_meta.get(text_key)) if best_meta and best_meta.get(text_key) else None
 
         new_meta: dict[str, Any] = {}
         if metadata_key in document and document[metadata_key] is not None:
             new_meta = dict(document[metadata_key])
         new_meta.setdefault(text_key, text)
 
-        if max_score is None or max_score < threshold:
+        verdict: str | None = None
+        in_gray_zone = (
+            max_score is not None
+            and MEMORY_COSINE_SIMILARITY_GRAY_LOW <= max_score < threshold
+        )
+        if in_gray_zone and arbitrator and best_id and best_text:
+            verdict = arbitrator(text, best_text).strip().lower()
+            if verdict not in ("same", "contradiction", "unrelated"):
+                verdict = "unrelated"  # неизвестный ответ арбитра — не перезаписываем
+
+        # same/contradiction в серой зоне обрабатываются как «высокое» сходство.
+        treat_as_high = (max_score is not None and max_score >= threshold) or (
+            verdict in ("same", "contradiction") and bool(best_id)
+        )
+
+        if not treat_as_high:
             if generate_ids or id_key not in document:
                 vid = str(uuid.uuid4())
             else:
@@ -383,6 +421,8 @@ class PineconeManager:
                 max_similarity=max_score,
                 similar_to_id=None,
                 threshold_used=threshold,
+                verdict=verdict,
+                best_match_text=best_text,
             )
 
         if not best_id:
@@ -396,6 +436,8 @@ class PineconeManager:
                 max_similarity=max_score,
                 similar_to_id=None,
                 threshold_used=threshold,
+                verdict=verdict,
+                best_match_text=best_text,
             )
 
         if on_high_similarity == "skip":
@@ -405,6 +447,8 @@ class PineconeManager:
                 max_similarity=max_score,
                 similar_to_id=best_id,
                 threshold_used=threshold,
+                verdict=verdict,
+                best_match_text=best_text,
             )
 
         merged: dict[str, Any] = dict(best_meta) if best_meta else {}
@@ -417,6 +461,8 @@ class PineconeManager:
             max_similarity=max_score,
             similar_to_id=best_id,
             threshold_used=threshold,
+            verdict=verdict,
+            best_match_text=best_text,
         )
 
     def fetch_vectors(self, ids: Sequence[str]) -> Any:
