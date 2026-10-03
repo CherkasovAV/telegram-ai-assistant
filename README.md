@@ -33,6 +33,7 @@
 telegram-ai-assistant/
 ├── telegram_bot.py       # Точка входа: long polling, история диалога, обработчики, ретраи
 ├── document_ingest.py    # Извлечение текста (txt/md/pdf/docx) и чанкинг документов
+├── memory_consolidation.py # «Как сон»: сжатие старой памяти в дайджесты
 ├── pinecone_manager.py   # PineconeManager: эмбеддинги, upsert/query, логика памяти
 ├── requirements.txt
 ├── .env.example

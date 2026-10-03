@@ -26,7 +26,9 @@ The bot carries meaningful conversations, remembering context from previous chat
 
 ```
 telegram-ai-assistant/
-├── telegram_bot.py       # Entry point, long polling, memory integration
+├── telegram_bot.py       # Entry point, long polling, dialog history, retries
+├── document_ingest.py    # Text extraction (txt/md/pdf/docx) and chunking
+├── memory_consolidation.py # 'Sleep-like' consolidation of old memory into digests
 ├── pinecone_manager.py   # PineconeManager: embeddings, upsert/query, memory logic
 ├── requirements.txt
 ├── .env.example
